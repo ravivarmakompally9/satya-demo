@@ -82,61 +82,19 @@ SATYA is a verification layer that sits **inside the company's finance system**.
 **The key design choice:** the finance action itself triggers protection. SATYA works even when it never sees
 the scam message.
 
+**Why it gets stronger over time.** Every protected company makes the next one safer:
+
+<p align="center"><img src="docs/diagrams/satya-network-loop.svg" alt="SATYA reinforcing loop: security signal, payment held, evidence pack, more companies protected, shared intelligence" width="640"></p>
+
 ## 3. How it works: the exact flow
 
 ### 3.1 Decision flow
 
-```mermaid
-flowchart TD
-    A[Finance user creates a payment or<br/>vendor bank change in the finance system] --> B{In scope?<br/>new beneficiary · bank change ·<br/>above limit · executive instruction}
-    B -- no --> R0[Normal workflow]
-    B -- yes --> H[1 · HOLD<br/>action held at the source<br/>finance system refuses release]
-    H --> G[2 · GATHER signals]
-    G --> G1[Request: email / forwarded WhatsApp /<br/>call notes]
-    G --> G2[Finance: vendor master, history,<br/>recent bank changes]
-    G --> G3[Security: SOC & endpoint alerts,<br/>risky sign-ins, new linked device]
-    G --> G4[Shared intelligence:<br/>account / sender seen in fraud elsewhere]
-    G1 & G2 & G3 & G4 --> AN[3 · ANALYSE<br/>SATYA Analyst explains risk<br/>with evidence and proposes a tier]
-    AN --> PF[Policy engine<br/>tier = max of policy floor, AI tier]
-    PF --> T{Tier}
-    T -- 1 --> V1[Approver confirms exact amount<br/>and account with strong sign-in]
-    T -- 2 --> V2[+ callback to number on file<br/>with challenge questions]
-    T -- 3 --> V3[+ second approver<br/>+ cooling-off period]
-    T -- 4 --> BL[BLOCK and escalate<br/>to security as an incident]
-    V1 & V2 & V3 --> OK{Checks passed?}
-    OK -- yes --> REL[RELEASE only the exact approved action<br/>approval token re-checked at release]
-    OK -- no --> BL
-    REL & BL --> P[4 · PROVE<br/>sealed evidence pack · intel update]
-```
+<p align="center"><img src="docs/diagrams/satya-decision-flow.svg" alt="SATYA decision flow: hold, gather, analyse, tier, verify, release or block, prove" width="820"></p>
 
 ### 3.2 The Boss Scam, stopped
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant SOC as Security tools (SOC / EDR)
-    participant ATK as Attacker (as "CEO" on WhatsApp)
-    participant FIN as Finance executive
-    participant FL as Finance system
-    participant ST as SATYA core
-    participant AI as SATYA Analyst (read-only)
-    participant CB as Callback service
-    participant CEO as Real CEO (number on file)
-
-    SOC->>ST: 10:02 alert on CEO laptop (webhook)
-    ATK->>FIN: 10:20 "Urgent hai. Pay ₹40 lakh to Apex Traders. Call mat karna."
-    FIN->>FL: 10:24 adds beneficiary, enters ₹40,00,000
-    FL->>ST: held action (amount, payee, account, version)
-    ST->>AI: minimal context: request text, alert, ledger facts
-    AI-->>ST: findings + evidence links, proposed Tier 4
-    ST->>ST: policy floor Tier 2, final tier = 4
-    ST->>CB: verify via trusted contact on file
-    CB->>CEO: call + challenge questions
-    CEO-->>CB: "I never sent that."
-    ST->>FL: decision = BLOCK (no release token issued)
-    ST->>SOC: incident with full timeline
-    ST->>ST: evidence pack sealed · mule account hash shared
-```
+<p align="center"><img src="docs/diagrams/satya-boss-scam-sequence.svg" alt="Sequence diagram: the Boss Scam stopped by SATYA" width="100%"></p>
 
 ### 3.3 Approval binding
 
@@ -146,45 +104,7 @@ change to the amount, payee, account or version cancels it and restarts verifica
 
 ## 4. Architecture
 
-```mermaid
-flowchart LR
-    subgraph Inputs
-        M[Request intake<br/>scoped mailbox · forwarded WhatsApp text]
-        S[Security alerts<br/>SIEM / SOC / EDR webhooks]
-        F[(Finance system<br/>Tally · Zoho · SAP · Business Central)]
-    end
-
-    subgraph SATYA["SATYA platform"]
-        C[SATYA core API<br/>policy floor & tiers<br/>approval binding<br/>case & evidence service]
-        W[Background worker<br/>job queue · transactional outbox]
-        DB[(PostgreSQL<br/>row-level tenant isolation<br/>append-only audit)]
-        EV[(Evidence store<br/>retention-locked)]
-        AI[SATYA Analyst<br/>LLM behind an adapter<br/>READ-ONLY · no tools to act]
-        RE[Rules engine]
-        IN[(Shared intelligence<br/>one-way hashes, opt-in)]
-    end
-
-    subgraph Verification
-        AP[Approver portal<br/>exact details · one-time code]
-        CBS[Callback service<br/>number on file only]
-        SV[Security team view<br/>Tier 3–4 cases]
-    end
-
-    M --> C
-    S --> C
-    F -- held action --> C
-    C <--> DB
-    C --> W
-    W --> EV
-    C -- minimal context --> AI
-    AI -- findings only --> C
-    C <--> RE
-    C <--> IN
-    C --> AP
-    C --> CBS
-    C --> SV
-    C == release decision / token ==> F
-```
+<p align="center"><img src="docs/diagrams/satya-architecture.svg" alt="SATYA architecture: inputs, SATYA platform, verification" width="100%"></p>
 
 **Design principles**
 
@@ -361,9 +281,12 @@ These are pilot targets to measure, not claims.
 ├── docs/
 │   ├── SATYA_PRD.pdf           # Product Requirements Document v2.1 (24 pages)
 │   ├── SATYA_Links_Slide.pdf   # one-page summary with clickable links
-│   └── SATYA_Links_Slide.png   # same, as an image
+│   ├── SATYA_Links_Slide.png   # same, as an image
+│   └── diagrams/               # Excalidraw diagrams: .svg for the README, .excalidraw to edit
 └── README.md
 ```
+
+**Edit the diagrams:** open any `docs/diagrams/*.excalidraw` file at [excalidraw.com](https://excalidraw.com) (Menu → Open).
 
 **Run the demo locally.** There is no build step and no dependencies to install:
 
